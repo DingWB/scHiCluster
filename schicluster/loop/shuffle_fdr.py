@@ -122,6 +122,8 @@ def update_fdr_qval(chrom_size_path,
                     & data['bkfilter']]
     for chrom in chrom_size_series.index:
         tmpfilter = (data['chrom'] == chrom)
+        if tmpfilter.sum()==0:
+            continue
         tmp = data.loc[tmpfilter, ['x1', 'y1']].values // res
         coord = (tmp[:, 0], tmp[:, 1])
         tmp = load_npz(f'{shuffle_group_prefix}_{chrom}.permutefdrlocal.npz')
