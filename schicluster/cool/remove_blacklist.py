@@ -119,6 +119,8 @@ def filter_contacts(contact_path,
         contacts = contacts[~is_blacklist_2d].copy()
 
     print(f"{contact_path.split('/')[-1]}: {contacts.shape[0]} filtered contacts in scool.")
+    if contacts.shape[0]==0:
+        return None
     if output_path is not None:
         contacts.to_csv(output_path, sep='\t', index=False, header=False)
     else:

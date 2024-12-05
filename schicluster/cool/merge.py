@@ -12,14 +12,14 @@ def load_cell_csv_to_csr(cell_path, chrom_offset, bins_df, resolution, chrom1, p
     contacts = contacts[contacts[chrom1].isin(chrom_offset) & contacts[chrom2].isin(chrom_offset)]
     pos_dist = (contacts[pos1] - contacts[pos2]).abs()
     contacts = contacts[(pos_dist > min_pos_dist) |  (contacts[chrom1] != contacts[chrom2])]
-    contacts['bin1_id'] = contacts[chrom1].map(chrom_offset) + (contacts[pos1] - 1) // resolution
+    contacts['bin1_id'] = contacts[chrom1].map(chrom_offset) + (contacts[pos1] - 1) // resolution # bin ID at the whold genome (all chromosomes)
     contacts['bin2_id'] = contacts[chrom2].map(chrom_offset) + (contacts[pos2] - 1) // resolution
     orderfilter = (contacts['bin1_id']>contacts['bin2_id'])
-    contacts.loc[orderfilter, ['bin1_id', 'bin2_id']] = contacts.loc[orderfilter, ['bin2_id', 'bin1_id']].values
+    contacts.loc[orderfilter, ['bin1_id', 'bin2_id']] = contacts.loc[orderfilter, ['bin2_id', 'bin1_id']].values # swap bin1 and bin2 ID to ensure that smaller bin ID always comes first
     
     count = contacts.groupby(['bin1_id','bin2_id'])[chrom1].count().reset_index()
     data = csr_matrix((count[chrom1].values, (count['bin1_id'].values, count['bin2_id'].values)), 
-                      shape=(bins_df.shape[0], bins_df.shape[0]))
+                      shape=(bins_df.shape[0], bins_df.shape[0])) # upper right part of the matrix is counted twice (diagonal is included and count once)
     return data
 
 def merge_cell_raw(cell_table, chrom_size_path, output_file, resolution=5000, 
@@ -34,7 +34,7 @@ def merge_cell_raw(cell_table, chrom_size_path, output_file, resolution=5000,
                                      chrom1=chrom1, pos1=pos1, chrom2=chrom2, pos2=pos2, min_pos_dist=min_pos_dist)
         print(yy)
 
-    data = data + diags(data.diagonal())
+    data = data + diags(data.diagonal()) #adds back the self-interactions (diagonal elements) to the matrix
     data = data.tocoo()
     data = pd.DataFrame(np.array([data.row, data.col, data.data], dtype=int).T, 
                         columns=['bin1_id', 'bin2_id', 'count'])
