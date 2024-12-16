@@ -1,6 +1,6 @@
 import pathlib
 import subprocess
-
+import os
 import pandas as pd
 import inspect
 
@@ -237,20 +237,22 @@ def call_loop(cell_table_path,
     _use_kwargs = {k: v
                    for k, v in kwargs.items()
                    if k in inspect.signature(prepare_loop_snakemake).parameters}
-    if shuffle:
-        output_dir = _use_kwargs.pop('output_dir')
-        real_dir = output_dir
-        shuffle_dir = f'{output_dir}/shuffle'
-        pathlib.Path(shuffle_dir).mkdir(exist_ok=True, parents=True)
-        prepare_loop_snakemake(shuffle=False, output_dir=real_dir, **_use_kwargs)
-        prepare_loop_snakemake(shuffle=True, output_dir=shuffle_dir, **_use_kwargs)
-        _run_snakemake(real_dir)
-        _run_snakemake(shuffle_dir)
-    else:
-        # not shuffle, just use normal loop pipeline
-        prepare_loop_snakemake(shuffle=False, **_use_kwargs)
-        output_dir = _use_kwargs.pop('output_dir')
-        _run_snakemake(output_dir)
+    flag_path = os.path.join(output_dir,'chunk_finished')
+    if not os.path.exists(flag_path):
+        if shuffle:
+            output_dir = _use_kwargs.pop('output_dir')
+            real_dir = output_dir
+            shuffle_dir = f'{output_dir}/shuffle'
+            pathlib.Path(shuffle_dir).mkdir(exist_ok=True, parents=True)
+            prepare_loop_snakemake(shuffle=False, output_dir=real_dir, **_use_kwargs)
+            prepare_loop_snakemake(shuffle=True, output_dir=shuffle_dir, **_use_kwargs)
+            _run_snakemake(real_dir)
+            _run_snakemake(shuffle_dir)
+        else:
+            # not shuffle, just use normal loop pipeline
+            prepare_loop_snakemake(shuffle=False, **_use_kwargs)
+            output_dir = _use_kwargs.pop('output_dir')
+            _run_snakemake(output_dir)
 
     # final call loop if shuffle
     if shuffle:
