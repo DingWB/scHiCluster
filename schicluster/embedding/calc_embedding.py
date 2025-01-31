@@ -62,7 +62,7 @@ def embedding(cell_table_path,
               resolution=100000,
               scale_factor=100000,
               norm_sig=True,
-              cpu=1,
+              cpu=1,svd_cpu=1,
               save_model=False,
               save_raw=True):
     cell_table = pd.read_csv(cell_table_path,
@@ -107,7 +107,7 @@ def embedding(cell_table_path,
     # SVD on each chromosome
     decomp_dir = output_dir / 'decomp'
     decomp_dir.mkdir(exist_ok=True)
-    with ProcessPoolExecutor(cpu) as exe:
+    with ProcessPoolExecutor(svd_cpu) as exe:
         futures = {}
         for chrom in chroms:
             chrom_raw_path = raw_dir / f'{chrom}.npz'

@@ -648,6 +648,8 @@ def embedding_register_subparser(subparser):
                         help='')
     parser.add_argument('--cpu', type=int, required=False, default=1,
                         help='')
+    parser.add_argument('--svd_cpu', type=int, required=False, default=1,
+                        help='')
     parser.add_argument('--norm_sig', dest='norm_sig', action='store_true',
                         help='')
     parser.set_defaults(norm_sig=False)
