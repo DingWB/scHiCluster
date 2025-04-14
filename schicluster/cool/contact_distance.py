@@ -7,13 +7,13 @@ def compute_decay(cell_name, contact_path, bins, chrom_sizes, resolution, chrom1
     # decay
     data = pd.read_csv(contact_path, sep='\t', header=None, index_col=None)
     data = data.loc[(data[chrom1]==data[chrom2]) & data[chrom1].isin(chrom_sizes.index)] # select cis-contact
-    hist = np.histogram(np.abs(data[pos2] - data[pos1]), bins)[0]
+    hist = np.histogram(np.abs(data[pos2] - data[pos1]), bins)[0] #The number of data points that fall into each bin (the histogram counts).
     # sparsity
     data[[pos1, pos2]] = data[[pos1, pos2]] // resolution
-    data = data.groupby(by=[chrom1, pos1, pos2])[chrom2].count().reset_index()
+    data = data.groupby(by=[chrom1, pos1, pos2])[chrom2].count().reset_index() #chrom,pos1,po2s,count
     data = data.loc[data[pos1]!=data[pos2], chrom1].value_counts() # total number of contacts on each chromosoe
-    return [pd.DataFrame(data).set_axis([cell_name], axis=1), 
-            pd.DataFrame(hist, columns=[cell_name])]
+    return [pd.DataFrame(data).set_axis([cell_name], axis=1),  # sparsity: a dataframe with chroms as index and cell_name as columns names, values are the total number of contacts on each chrom
+            pd.DataFrame(hist, columns=[cell_name])]  # decay: a dataframe with only one column (column name is cell_name): number of contact fall into each distance bin.
 
 def contact_distance(contact_table, chrom_size_path, resolution, output_prefix, chrom1, chrom2, pos1, pos2, cpu):
     chrom_sizes = pd.read_csv(chrom_size_path, sep='\t', header=None, index_col=0)
