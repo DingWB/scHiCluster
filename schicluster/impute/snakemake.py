@@ -47,7 +47,7 @@ def prepare_impute(output_dir,
         scool_cell_ids = [i.split('/')[-1] for i in cell_list]
     elif cell_table is not None:
         cell_list = pd.read_csv(cell_table, sep='\t', index_col=0, header=None)
-        if isinstance(cell_list,pd.DataFrame):
+        if isinstance(cell_list,pd.DataFrame) and 2 in cell_list.columns.tolist():
             stratify=2 # the third column will be used to group the cells into chunk
     chunk_dirs = []
     params = dict(
