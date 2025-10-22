@@ -68,7 +68,10 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
     nbins = np.floor(np.log2(chrom_sizes[1].values.max() / 2500) / 0.125) #132
     bins = 2500 * np.exp2(0.125 * np.arange(nbins+1))
     #dist = int(chromsize[1].min() // res + 1)
-    contact_table = pd.read_csv(contact_table, sep='\t', index_col=None, header=None)
+    if isinstance(contact_table,str):
+        contact_table = pd.read_csv(contact_table, sep='\t', index_col=None, header=None)
+    else:
+        assert isinstance(contact_table,pd.DataFrame) # columns: 0 (cell_name) and 1 (contact_path)
     with ProcessPoolExecutor(cpu) as executor:
         futures = {}
         for cell_name, contact_path in contact_table.values:
