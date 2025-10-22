@@ -81,7 +81,7 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
                 contact_path=contact_path,
                 bins=bins,
                 chrom_sizes=chrom_sizes,
-                resolution=resolution,
+                resolution=resolution,bed_df=bed_df,
                 chrom1=chrom1,
                 pos1=pos1,
                 chrom2=chrom2,
