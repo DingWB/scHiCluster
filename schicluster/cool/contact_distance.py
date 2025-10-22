@@ -5,12 +5,11 @@ import pybedtools
 pybedtools.helpers.set_bedtools_path(path=os.path.dirname(sys.executable))
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-def overlap_with_bed(data,df2,chrom1,pos1,chrom2,pos2):
+def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     df1=data.loc[:,[chrom1,pos1]]
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
-    bed2 = pybedtools.BedTool.from_dataframe(df2)
     intersection = bed1.intersect(bed2, wa=True,wb=True,loj=True) #f=0.7,F=0.7,r=True
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2']+df2.columns.tolist()[3:])
     df.category=df.category.replace({'.':'NA'})
@@ -25,7 +24,7 @@ def overlap_with_bed(data,df2,chrom1,pos1,chrom2,pos2):
     data['category2']=df.category.tolist()
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
     # Clean up all temporary files created in the session
-    pybedtools.cleanup()
+    # pybedtools.cleanup()
     return data
 
 def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10000, bed_df=None, chrom1=1, chrom2=5, pos1=2, pos2=6):
@@ -68,6 +67,7 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
             bed_df=pd.read_csv(os.path.expanduser(bed_df),sep='\t',header=None,usecols=[0,1,2],names=['chrom','start','end','category'])
         else:
             assert isinstance(bed_df,pd.DataFrame)
+        bed_df = pybedtools.BedTool.from_dataframe(bed_df)
     chrom_sizes = pd.read_csv(chrom_size_path, sep='\t', header=None, index_col=0)
     nbins = np.floor(np.log2(chrom_sizes[1].values.max() / 2500) / 0.125) #132
     bins = 2500 * np.exp2(0.125 * np.arange(nbins+1))
