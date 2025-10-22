@@ -24,6 +24,8 @@ def overlap_with_bed(data,df2,chrom1,pos1,chrom2,pos2):
     df.category=df.category.replace({'.':'NA'})
     data['category2']=df.category.tolist()
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
+    # Clean up all temporary files created in the session
+    pybedtools.cleanup()
     return data
 
 def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10000, bed_df=None, chrom1=1, chrom2=5, pos1=2, pos2=6):
