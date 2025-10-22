@@ -106,3 +106,4 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
     decay = pd.concat(decay, axis = 1).T
     sparsity.to_hdf(f'{output_prefix}_chromsparsity.hdf5', key='data')
     decay.to_hdf(f'{output_prefix}_decay.hdf5', key='data')
+    pybedtools.cleanup(remove_all=True)
