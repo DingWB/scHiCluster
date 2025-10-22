@@ -59,6 +59,8 @@ def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10
             decay]  # decay: a dataframe with only one column (column name is cell_name): number of contact fall into each distance bin.
 
 def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, resolution=10000, output_prefix=None, chrom1=1, chrom2=5, pos1=2, pos2=6, cpu=16,verbose=1):
+    outdir=os.dirname(output_prefix)
+    pybedtools.tempfile.tempdir=outdir
     if not bed_df is None:
         if isinstance(bed_df,str):
             bed_df=pd.read_csv(os.path.expanduser(bed_df),sep='\t',header=None,usecols=[0,1,2],names=['chrom','start','end','category'])
