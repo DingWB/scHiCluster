@@ -32,7 +32,7 @@ def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10
     data = data.loc[(data[chrom1]==data[chrom2]) & data[chrom1].isin(chrom_sizes.index)] # select cis-contact
     if not bed_df is None: # with 4 columns: chrom,start,end and category
         # Intersect the contact dataframe with the given bed regions (such as A, B compartment files)
-        data=overlap_with_bed(data,df2,chrom1,pos1,chrom2,pos2)
+        data=overlap_with_bed(data,bed_df,chrom1,pos1,chrom2,pos2)
         data['dist']=(data[pos2]-data[pos1]).abs()
         data[[pos1, pos2]] = data[[pos1, pos2]] // resolution
         decay_results=[]
