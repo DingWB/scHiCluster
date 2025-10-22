@@ -58,7 +58,7 @@ def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10
     return [sparsity,  # sparsity: a dataframe with chroms as index and cell_name as columns names, values are the total number of contacts on each chrom
             decay]  # decay: a dataframe with only one column (column name is cell_name): number of contact fall into each distance bin.
 
-def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, resolution=10000, output_prefix=None, chrom1=1, chrom2=5, pos1=2, pos2=6, cpu=16):
+def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, resolution=10000, output_prefix=None, chrom1=1, chrom2=5, pos1=2, pos2=6, cpu=16,verbose=1):
     if not bed_df is None:
         if isinstance(bed_df,str):
             bed_df=pd.read_csv(os.path.expanduser(bed_df),sep='\t',header=None,usecols=[0,1,2],names=['chrom','start','end','category'])
@@ -95,7 +95,8 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
             xx, yy = future.result()
             sparsity.append(xx)
             decay.append(yy)
-            print(f'{cell_name} finished')
+            if verbose > 0:
+                print(f'{cell_name} finished')
             
     # sparsity = pd.concat(sparsity, axis = 1)[contact_table[0]].T
     # decay = pd.concat(decay, axis = 1)[contact_table[0]].T
