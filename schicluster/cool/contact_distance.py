@@ -6,22 +6,27 @@ pybedtools.helpers.set_bedtools_path(path=os.path.dirname(sys.executable))
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
+    data['ID1']=data[chrom1].map(str)+'-'+data[pos1].map(str)
+    data['ID2']=data[chrom2].map(str)+'-'+data[pos2].map(str)
     df1=data.loc[:,[chrom1,pos1]]
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
-    intersection = bed1.intersect(bed2, wa=True,wb=True,loj=True) #f=0.7,F=0.7,r=True
+    intersection = bed1.intersect(bed2, wa=True,wb=True) # loj=True
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
-    df.category=df.category.replace({'.':'NA'})
-    data['category1']=df.category.tolist()
+    # df.category=df.category.replace({'.':'NA'})
+    df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
+    D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
+    data['category1']=data.ID1.map(D).fillna('NA')
     df1=data.loc[:,[chrom2,pos2]]
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
-    intersection = bed1.intersect(bed2, wa=True,wb=True,loj=True) #f=0.7,F=0.7,r=True
+    intersection = bed1.intersect(bed2, wa=True,wb=True)
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
-    df.category=df.category.replace({'.':'NA'})
-    data['category2']=df.category.tolist()
+    df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
+    D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
+    data['category2']=data.ID2.map(D).fillna('NA')
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
     # Clean up all temporary files created in the session
     # pybedtools.cleanup()
