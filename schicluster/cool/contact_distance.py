@@ -12,8 +12,10 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
-    tmp_file=bed1.fn
+    tmp_files=[]
+    tmp_files.append(bed1.fn)
     intersection = bed1.intersect(bed2, wa=True,wb=True) # loj=True
+    tmp_files.append(intersection.fn)
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
     if df.shape[0]==0:
         data['category1']='NA'
@@ -22,14 +24,14 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
         df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
         D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
         data['category1']=data.ID1.map(D).fillna('NA')
-    os.remove(tmp_file)
 
     df1=data.loc[:,[chrom2,pos2]].drop_duplicates()
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
-    tmp_file=bed1.fn
+    tmp_files.append(bed1.fn)
     intersection = bed1.intersect(bed2, wa=True,wb=True)
+    tmp_files.append(intersection.fn)
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
     if df.shape[0]==0:
         data['category2']='NA'
@@ -38,7 +40,8 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
         D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
         data['category2']=data.ID2.map(D).fillna('NA')
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
-    os.remove(tmp_file)
+    for tmp_file in tmp_files:
+        os.remove(tmp_file)
     # Clean up all temporary files created in the session
     # pybedtools.cleanup()
     return data
