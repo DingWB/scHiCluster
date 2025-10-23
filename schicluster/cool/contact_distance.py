@@ -11,7 +11,7 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
     intersection = bed1.intersect(bed2, wa=True,wb=True,loj=True) #f=0.7,F=0.7,r=True
-    df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2']+df2.columns.tolist()[3:])
+    df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
     df.category=df.category.replace({'.':'NA'})
     data['category1']=df.category.tolist()
     df1=data.loc[:,[chrom2,pos2]]
@@ -19,7 +19,7 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
     intersection = bed1.intersect(bed2, wa=True,wb=True,loj=True) #f=0.7,F=0.7,r=True
-    df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2']+df2.columns.tolist()[3:])
+    df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
     df.category=df.category.replace({'.':'NA'})
     data['category2']=df.category.tolist()
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
