@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     data['ID1']=data[chrom1].map(str)+'-'+data[pos1].map(str)
     data['ID2']=data[chrom2].map(str)+'-'+data[pos2].map(str)
-    df1=data.loc[:,[chrom1,pos1]]
+    df1=data.loc[:,[chrom1,pos1]].drop_duplicates()
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
@@ -18,7 +18,8 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
     D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
     data['category1']=data.ID1.map(D).fillna('NA')
-    df1=data.loc[:,[chrom2,pos2]]
+
+    df1=data.loc[:,[chrom2,pos2]].drop_duplicates()
     df1.columns=['chrom','start']
     df1['end']=df1.start + 1
     bed1 = pybedtools.BedTool.from_dataframe(df1)
@@ -72,7 +73,7 @@ def contact_distance(contact_table=None, chrom_size_path=None, bed_df=None, reso
             bed_df=pd.read_csv(os.path.expanduser(bed_df),sep='\t',header=None,usecols=[0,1,2],names=['chrom','start','end','category'])
         else:
             assert isinstance(bed_df,pd.DataFrame)
-        bed_df = pybedtools.BedTool.from_dataframe(bed_df)
+        bed_df = pybedtools.BedTool.from_dataframe(bed_df.drop_duplicates())
     chrom_sizes = pd.read_csv(chrom_size_path, sep='\t', header=None, index_col=0)
     nbins = np.floor(np.log2(chrom_sizes[1].values.max() / 2500) / 0.125) #132
     bins = 2500 * np.exp2(0.125 * np.arange(nbins+1))
