@@ -14,10 +14,13 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     bed1 = pybedtools.BedTool.from_dataframe(df1)
     intersection = bed1.intersect(bed2, wa=True,wb=True) # loj=True
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
-    # df.category=df.category.replace({'.':'NA'})
-    df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
-    D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
-    data['category1']=data.ID1.map(D).fillna('NA')
+    if df.shape[0]==0:
+        data['category1']='NA'
+    else:
+        # df.category=df.category.replace({'.':'NA'})
+        df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
+        D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
+        data['category1']=data.ID1.map(D).fillna('NA')
 
     df1=data.loc[:,[chrom2,pos2]].drop_duplicates()
     df1.columns=['chrom','start']
@@ -25,9 +28,12 @@ def overlap_with_bed(data,bed2,chrom1,pos1,chrom2,pos2):
     bed1 = pybedtools.BedTool.from_dataframe(df1)
     intersection = bed1.intersect(bed2, wa=True,wb=True)
     df=intersection.to_dataframe(names=df1.columns.tolist()+['chr2','start2','end2','category'])
-    df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
-    D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
-    data['category2']=data.ID2.map(D).fillna('NA')
+    if df.shape[0]==0:
+        data['category2']='NA'
+    else:
+        df['ID']=df.chrom.map(str)+'-'+df.start.map(str)
+        D=df.loc[:,['ID','category']].drop_duplicates().set_index('ID').category.to_dict()
+        data['category2']=data.ID2.map(D).fillna('NA')
     data['category']=data.category1.map(str)+'|'+data.category2.map(str)
     # Clean up all temporary files created in the session
     # pybedtools.cleanup()
@@ -39,7 +45,11 @@ def compute_decay(cell_name, contact_path, bins, chrom_sizes=None, resolution=10
     data = data.loc[(data[chrom1]==data[chrom2]) & data[chrom1].isin(chrom_sizes.index)] # select cis-contact
     if not bed_df is None: # with 4 columns: chrom,start,end and category
         # Intersect the contact dataframe with the given bed regions (such as A, B compartment files)
-        data=overlap_with_bed(data,bed_df,chrom1,pos1,chrom2,pos2)
+        try:
+            data=overlap_with_bed(data,bed_df,chrom1,pos1,chrom2,pos2)
+        except Exception as error_message:
+            print(cell_name)
+            print(error_message)
         data['dist']=(data[pos2]-data[pos1]).abs()
         data[[pos1, pos2]] = data[[pos1, pos2]] // resolution
         decay_results=[]
