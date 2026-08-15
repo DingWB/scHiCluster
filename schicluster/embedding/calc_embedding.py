@@ -10,8 +10,8 @@ import pathlib
 
 def make_idx(n_dim, dist, resolution):
     idx = np.triu_indices(n_dim, k=1)
-    idx_filter = np.array([(yy - xx) < (dist / resolution + 1)
-                           for xx, yy in zip(idx[0], idx[1])])
+    # vectorized band filter (Python loop is far too slow/memory-heavy at 25kb)
+    idx_filter = (idx[1] - idx[0]) < (dist / resolution + 1)
     idx = (idx[0][idx_filter], idx[1][idx_filter])
     return idx
 
@@ -25,20 +25,24 @@ def make_chrom_matrix(cell_table,
                       resolution):
     idx = make_idx(nbins, dist, resolution)
     shape = (cell_table.size, idx[0].size)
-    # read data
-    chrom_matrix = np.zeros(shape=shape, dtype='float32')
+    # write directly to a disk-backed memmap so a full (n_cells x n_features)
+    # dense matrix is never held in RAM (at 25kb one chrom can be hundreds of GB)
+    chrom_matrix = np.lib.format.open_memmap(
+        str(output_path), mode='w+', dtype='float32', shape=shape)
     for i, (_, cell_url) in enumerate(cell_table.items()):
         cool = cooler.Cooler(cell_url)
         matrix = cool.matrix(balance=False, sparse=False).fetch(chrom)
         # each row of chrom_matrix is a 1D cell-chrom matrix
-        chrom_matrix[i, :] = matrix[idx].ravel()
-    chrom_matrix *= scale_factor
-    np.savez(output_path, chrom_matrix)
+        chrom_matrix[i, :] = matrix[idx].ravel() * scale_factor
+    chrom_matrix.flush()
+    del chrom_matrix
     return
 
 
 def svd(input_path, dim, output_prefix, save_model=True, norm_sig=True):
-    chrom_matrix = np.load(input_path)['arr_0']
+    loaded = np.load(input_path)
+    # raw chrom matrices are .npy memmaps, the concatenated matrix is a .npz
+    chrom_matrix = loaded['arr_0'] if hasattr(loaded, 'files') else loaded
     dim = min(dim, chrom_matrix.shape[0] - 1, chrom_matrix.shape[1] - 1)
     model = TruncatedSVD(n_components=dim, algorithm='arpack')
     decomp = model.fit_transform(chrom_matrix)
@@ -88,7 +92,7 @@ def embedding(cell_table_path,
         futures = {}
         for chrom in chroms:
             nbins = chrom_bin_counts[chrom]
-            output_path = raw_dir / f'{chrom}.npz'
+            output_path = raw_dir / f'{chrom}.npy'
             future = exe.submit(make_chrom_matrix,
                                 cell_table=cell_table,
                                 chrom=chrom,
@@ -110,7 +114,7 @@ def embedding(cell_table_path,
     with ProcessPoolExecutor(svd_cpu) as exe:
         futures = {}
         for chrom in chroms:
-            chrom_raw_path = raw_dir / f'{chrom}.npz'
+            chrom_raw_path = raw_dir / f'{chrom}.npy'
             output_prefix = decomp_dir / chrom
             future = exe.submit(svd,
                                 input_path=chrom_raw_path,
