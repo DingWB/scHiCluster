@@ -650,9 +650,18 @@ def embedding_register_subparser(subparser):
                         help='')
     parser.add_argument('--svd_cpu', type=int, required=False, default=1,
                         help='')
-    parser.add_argument('--cell_chunk_size', type=int, required=False, default=2000,
+    parser.add_argument('--cell_chunk_size', type=int, required=False, default=500,
                         help='Number of cells each worker fills per task in the '
                         'raw-matrix stage; smaller values give finer parallelism.')
+    parser.add_argument('--svd_n_iter', type=int, required=False, default=4,
+                        help='Power iterations for the randomized SVD. Each iteration '
+                        'adds 2 passes over the raw chromosome matrix, so this is the '
+                        'expensive accuracy knob.')
+    parser.add_argument('--svd_n_oversamples', type=int, required=False, default=150,
+                        help='Extra sketch dimensions for the randomized SVD. These '
+                        'band matrices have a very flat singular value tail, where '
+                        'oversampling buys far more accuracy than power iterations '
+                        'and costs no extra passes over the data.')
     parser.add_argument('--norm_sig', dest='norm_sig', action='store_true',
                         help='')
     parser.set_defaults(norm_sig=False)
