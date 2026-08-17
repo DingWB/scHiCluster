@@ -16,24 +16,32 @@ def make_idx(n_dim, dist, resolution):
     return idx
 
 
-def make_chrom_matrix_chunk(output_path,
+def make_chrom_matrix_chunk(output_paths,
                             cell_urls,
                             row_offset,
-                            chrom,
-                            idx,
+                            chroms,
+                            chrom_idx,
                             scale_factor):
-    # multiple workers fill disjoint row ranges of the same pre-created memmap
-    # concurrently (rows never overlap, so no locking is needed)
-    chrom_matrix = np.lib.format.open_memmap(str(output_path), mode='r+')
+    # each worker handles one disjoint range of cells for ALL chroms at once,
+    # so every cool file is opened only once (instead of once per chrom).
+    # workers fill disjoint row ranges of the pre-created memmaps concurrently
+    # (rows never overlap, so no locking is needed).
+    chrom_matrices = {chrom: np.lib.format.open_memmap(str(output_paths[chrom]), mode='r+')
+                      for chrom in chroms}
     for j, cell_url in enumerate(cell_urls):
         cool = cooler.Cooler(cell_url)
-        matrix = cool.matrix(balance=False, sparse=False).fetch(chrom)
-        # each row of chrom_matrix is a 1D cell-chrom matrix
-        chrom_matrix[row_offset + j, :] = matrix[idx].ravel()
-    # cast to float32 first, then scale in float32 to match the original exactly
-    chrom_matrix[row_offset:row_offset + len(cell_urls)] *= scale_factor
-    chrom_matrix.flush()
-    del chrom_matrix
+        selector = cool.matrix(balance=False, sparse=False)
+        for chrom in chroms:
+            matrix = selector.fetch(chrom)
+            idx = chrom_idx[chrom]
+            # each row of chrom_matrix is a 1D cell-chrom matrix
+            chrom_matrices[chrom][row_offset + j, :] = matrix[idx].ravel()
+    for chrom in chroms:
+        chrom_matrix = chrom_matrices[chrom]
+        # scale in float32 to match the original exactly
+        chrom_matrix[row_offset:row_offset + len(cell_urls)] *= scale_factor
+        chrom_matrix.flush()
+    del chrom_matrices
     return
 
 
@@ -94,35 +102,34 @@ def embedding(cell_table_path,
     # pre-create one memmap per chrom (and its band index) in the main process,
     # so workers only open it in 'r+' and write disjoint rows
     chrom_idx = {}
+    output_paths = {}
     for chrom in chroms:
         nbins = chrom_bin_counts[chrom]
         idx = make_idx(nbins, dist, resolution)
         chrom_idx[chrom] = idx
-        mm = np.lib.format.open_memmap(str(raw_dir / f'{chrom}.npy'),
+        output_paths[chrom] = raw_dir / f'{chrom}.npy'
+        mm = np.lib.format.open_memmap(str(output_paths[chrom]),
                                        mode='w+', dtype='float32',
                                        shape=(n_cells, idx[0].size))
         del mm
 
     with ProcessPoolExecutor(cpu) as exe:
         futures = {}
-        for chrom in chroms:
-            idx = chrom_idx[chrom]
-            output_path = raw_dir / f'{chrom}.npy'
-            for start in range(0, n_cells, cell_chunk_size):
-                end = min(start + cell_chunk_size, n_cells)
-                future = exe.submit(make_chrom_matrix_chunk,
-                                    output_path,
-                                    cell_urls[start:end],
-                                    start,
-                                    chrom,
-                                    idx,
-                                    scale_factor)
-                futures[future] = (chrom, start)
+        for start in range(0, n_cells, cell_chunk_size):
+            end = min(start + cell_chunk_size, n_cells)
+            future = exe.submit(make_chrom_matrix_chunk,
+                                output_paths,
+                                cell_urls[start:end],
+                                start,
+                                list(chroms),
+                                chrom_idx,
+                                scale_factor)
+            futures[future] = start
 
         for future in as_completed(futures):
-            chrom, start = futures[future]
+            start = futures[future]
             future.result()
-            print(f'{chrom} rows {start}-{start + cell_chunk_size} generated')
+            print(f'cell rows {start}-{start + cell_chunk_size} generated')
 
     # SVD on each chromosome
     decomp_dir = output_dir / 'decomp'
