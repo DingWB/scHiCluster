@@ -662,6 +662,12 @@ def embedding_register_subparser(subparser):
                         'band matrices have a very flat singular value tail, where '
                         'oversampling buys far more accuracy than power iterations '
                         'and costs no extra passes over the data.')
+    parser.add_argument('--svd_downsample', type=int, required=False, default=100000,
+                        help='Fit the per-chromosome SVD on this many randomly sampled '
+                        'cells, then project all cells onto it, instead of decomposing '
+                        'the full matrix. Greatly speeds up large datasets. Set <=0 to '
+                        'disable and use every cell. The final concat SVD always uses '
+                        'all cells.')
     parser.add_argument('--norm_sig', dest='norm_sig', action='store_true',
                         help='')
     parser.set_defaults(norm_sig=False)
