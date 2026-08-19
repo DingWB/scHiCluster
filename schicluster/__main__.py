@@ -678,6 +678,26 @@ def embedding_register_subparser(subparser):
                         help='')
     parser.set_defaults(save_raw=False)
 
+    parser.add_argument('--distance_normalize', dest='distance_normalize',
+                        action='store_true',
+                        help='Distance-normalize (observed/expected) each band entry '
+                        'by the mean contact at its diagonal offset before SVD. Removes '
+                        'the distance decay that otherwise lets the first few diagonals '
+                        'dominate, and cancels most of the per-cell depth. On by default.')
+    parser.add_argument('--no_distance_normalize', dest='distance_normalize',
+                        action='store_false',
+                        help='Disable O/E normalization (use raw contacts * scale_factor, '
+                        'the original behaviour).')
+    parser.set_defaults(distance_normalize=True)
+    parser.add_argument('--log_transform', dest='log_transform',
+                        action='store_true',
+                        help='Apply log1p to the band features (after O/E when enabled). '
+                        'On by default.')
+    parser.add_argument('--no_log_transform', dest='log_transform',
+                        action='store_false',
+                        help='Disable the log1p transform of the band features.')
+    parser.set_defaults(log_transform=True)
+
 
 def gene_score_register_subparser(subparser):
     parser = subparser.add_parser('gene-score',
@@ -714,6 +734,19 @@ def gene_score_register_subparser(subparser):
                         help='0 based index of pos1 column.')
     parser.add_argument('--pos2', type=int, default=6, required=False, 
                         help='0 based index of pos2 column.')
+    parser.add_argument('--oe_normalize', dest='oe_normalize', action='store_true',
+                        help='(impute mode) Divide each contact in the gene window by '
+                        'the distance-decay expectation at its diagonal offset '
+                        '(observed/expected), removing the distance-decay bias. Off by '
+                        'default.')
+    parser.add_argument('--per_gene_mean', dest='per_gene_mean', action='store_true',
+                        help='Divide each gene score by the number of contacts in its '
+                        'window (average instead of sum), removing the gene-length '
+                        'effect. Off by default.')
+    parser.add_argument('--min_gene_bins', type=int, default=None, required=False,
+                        help='Widen genes shorter than this many bins (symmetrically) '
+                        'to stabilize the score of very short genes. Default None '
+                        '(no widening).')
 
 
 def merge_cell_raw_register_subparser(subparser):

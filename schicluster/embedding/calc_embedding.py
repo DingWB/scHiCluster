@@ -40,6 +40,41 @@ def band_row_offsets(n_dim, max_off):
     return P
 
 
+def band_offset_index(row_offsets):
+    """Diagonal offset (1..max_off) of each position in the flat band vector.
+
+    Position p in row i (see band_row_offsets) holds M[i, i+offset], so
+    offset = p - row_offsets[i] + 1. Used to group band entries by genomic
+    distance for the observed/expected normalization.
+    """
+    total = int(row_offsets[-1])
+    idx = np.arange(total)
+    row_id = np.searchsorted(row_offsets, idx, side='right') - 1
+    return (idx - row_offsets[row_id] + 1).astype(np.int32)
+
+
+def _normalize_band(band, off_index, off_counts, max_off, scale,
+                    distance_normalize, log_transform, eps=np.float32(1e-5)):
+    """Optionally distance-normalize (O/E) and log-transform one band vector.
+
+    distance_normalize divides each entry by the mean contact at its diagonal
+    offset (observed/expected), which removes the distance decay that otherwise
+    lets the first few diagonals dominate the SVD and cancels most of the
+    per-cell depth. log_transform then applies log1p. With both disabled it
+    falls back to the original ``band * scale`` behaviour.
+    """
+    if distance_normalize:
+        sums = np.bincount(off_index, weights=band.astype(np.float64),
+                           minlength=max_off + 1)
+        mean_per_off = (sums / off_counts).astype(np.float32)
+        band = band / (mean_per_off[off_index] + eps)
+    else:
+        band = band * scale
+    if log_transform:
+        band = np.log1p(band)
+    return band.astype(np.float32, copy=False)
+
+
 def _cell_chrom_band(grp, bin1_offset, first_bin, last_bin, row_offsets, max_off):
     """Read one cell/chromosome band vector straight from the pixel table.
 
@@ -81,7 +116,9 @@ def make_chrom_matrix_chunk(output_paths,
                             chroms,
                             chrom_band,
                             scale_factor,
-                            max_off):
+                            max_off,
+                            distance_normalize=True,
+                            log_transform=True):
     # each worker handles one disjoint range of cells for ALL chroms at once,
     # so every cool file is opened only once (instead of once per chrom).
     # workers fill disjoint row ranges of the pre-created memmaps concurrently
@@ -95,12 +132,13 @@ def make_chrom_matrix_chunk(output_paths,
             grp = store[group_path]
             bin1_offset = grp['indexes/bin1_offset'][:]
             for chrom in chroms:
-                first_bin, last_bin, row_offsets = chrom_band[chrom]
+                first_bin, last_bin, row_offsets, off_index, off_counts = chrom_band[chrom]
                 band = _cell_chrom_band(grp, bin1_offset, first_bin, last_bin,
                                         row_offsets, max_off)
-                # scale in memory; the old code did a second read-modify-write
-                # pass over the whole chunk through the memmap afterwards
-                band *= scale
+                # distance-normalize (O/E) + log1p in memory; the old code only
+                # did band *= scale then a second pass through the memmap
+                band = _normalize_band(band, off_index, off_counts, max_off,
+                                       scale, distance_normalize, log_transform)
                 chrom_matrices[chrom][row_offset + j, :] = band
     for chrom in chroms:
         chrom_matrices[chrom].flush()
@@ -187,7 +225,9 @@ def embedding(cell_table_path,
               save_raw=True,
               svd_n_iter=4,
               svd_n_oversamples=150,
-              svd_downsample=100000):
+              svd_downsample=100000,
+              distance_normalize=True,
+              log_transform=True):
     cell_table = pd.read_csv(cell_table_path,
                              sep='\t',
                              index_col=0,
@@ -246,7 +286,11 @@ def embedding(cell_table_path,
             first_bin, last_bin = first_cool.extent(chrom)
             nbins = last_bin - first_bin
             row_offsets = band_row_offsets(nbins, max_off)
-            chrom_band[chrom] = (first_bin, last_bin, row_offsets)
+            off_index = band_offset_index(row_offsets)
+            off_counts = np.maximum(
+                np.bincount(off_index, minlength=max_off + 1), 1).astype(np.float64)
+            chrom_band[chrom] = (first_bin, last_bin, row_offsets,
+                                 off_index, off_counts)
             output_paths[chrom] = raw_dir / f'{chrom}.npy'
             mm = np.lib.format.open_memmap(str(output_paths[chrom]),
                                            mode='w+', dtype='float32',
@@ -269,7 +313,9 @@ def embedding(cell_table_path,
                                     list(chroms),
                                     chrom_band,
                                     scale_factor,
-                                    max_off)
+                                    max_off,
+                                    distance_normalize,
+                                    log_transform)
                 futures[future] = start
 
             for future in as_completed(futures):
