@@ -106,6 +106,9 @@ def _cell_chrom_band(grp, bin1_offset, first_bin, last_bin, row_offsets, max_off
         return band
 
     count = grp['pixels/count'][lo:hi]
+    # imputed coolers can store NaN/inf counts (row/col normalization over a
+    # zero-coverage bin); copied verbatim they poison the whole offset's O/E mean
+    count = np.nan_to_num(count, nan=0.0, posinf=0.0, neginf=0.0)
     band[row_offsets[bin1[keep] - first_bin] + (offset[keep] - 1)] = count[keep]
     return band
 
@@ -119,6 +122,8 @@ def make_chrom_matrix_chunk(output_paths,
                             max_off,
                             distance_normalize=True,
                             log_transform=True):
+    # scale_factor is only applied on the legacy path (distance_normalize=False);
+    # when distance_normalize is on the band is O/E-normalized and scale is unused.
     # each worker handles one disjoint range of cells for ALL chroms at once,
     # so every cool file is opened only once (instead of once per chrom).
     # workers fill disjoint row ranges of the pre-created memmaps concurrently
