@@ -685,20 +685,20 @@ def embedding_register_subparser(subparser):
                         help='Distance-normalize (observed/expected) each band entry '
                         'by the mean contact at its diagonal offset before SVD. Removes '
                         'the distance decay that otherwise lets the first few diagonals '
-                        'dominate, and cancels most of the per-cell depth. On by default.')
+                        'dominate, and cancels most of the per-cell depth. Off by default.')
     parser.add_argument('--no_distance_normalize', dest='distance_normalize',
                         action='store_false',
                         help='Disable O/E normalization (use raw contacts * scale_factor, '
                         'the original behaviour).')
-    parser.set_defaults(distance_normalize=True)
+    # parser.set_defaults(distance_normalize=True)
     parser.add_argument('--log_transform', dest='log_transform',
                         action='store_true',
                         help='Apply log1p to the band features (after O/E when enabled). '
-                        'On by default.')
+                        'Off by default.')
     parser.add_argument('--no_log_transform', dest='log_transform',
                         action='store_false',
                         help='Disable the log1p transform of the band features.')
-    parser.set_defaults(log_transform=True)
+    # parser.set_defaults(log_transform=True)
 
 
 def gene_score_register_subparser(subparser):
