@@ -645,8 +645,7 @@ def embedding_register_subparser(subparser):
                         help='Resolution for embedding.'
                         'Consistent with resolution of imputed contact files')
     parser.add_argument('--scale_factor', type=int, required=False, default=100000,
-                        help='Only used when --no_distance_normalize is set (the '
-                        'legacy band*scale path); ignored when distance_normalize '
+                        help='ignored when distance_normalize '
                         'is on (the default), where band values are O/E-normalized.')
     parser.add_argument('--cpu', type=int, required=False, default=1,
                         help='')
